@@ -97,10 +97,8 @@ pub fn convert_to<R: Read, W: Write>(source: R, dest: W, ending: LineEnding) {
             Some(c) => *c == LF,
         };
         if has_line_ending {
-            if buf.len() >= 2 && buf[buf.len() - 2] == CR {
-                buf.pop();
-                buf.pop();
-            } else {
+            buf.pop();
+            if buf.last() == Some(&CR) {
                 buf.pop();
             }
         }
