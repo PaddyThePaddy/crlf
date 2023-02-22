@@ -97,19 +97,19 @@ fn main() {
     if action == Action::Measure {
         files.iter().for_each(|f| {
             let stat = CrlfStat::measure_file(File::open(f).unwrap());
-            let filename = f.as_os_str().to_string_lossy();
-            let name_str = match stat.is_pure() {
+            let indicator = match stat.is_pure() {
                 Some(le) => match le {
-                    LineEnding::CRLF => Color::Yellow.paint(filename),
-                    LineEnding::LF => Color::Green.paint(filename),
+                    LineEnding::CRLF => Color::Yellow.paint("C"),
+                    LineEnding::LF => Color::Green.paint("L"),
                 },
-                None => Color::Red.paint(filename),
+                None => Color::Red.paint("X"),
             };
             println!(
-                "{}: crlf: {}, lf: {}",
-                name_str,
-                Color::Yellow.paint(format!("{}", stat.crlf())),
-                Color::Green.paint(format!("{}", stat.lf()))
+                "{} {}: {}, {}",
+                indicator,
+                f.display(),
+                Color::Yellow.paint(format!("crlf: {}", stat.crlf())),
+                Color::Green.paint(format!("lf: {}", stat.lf()))
             );
         });
     } else {
