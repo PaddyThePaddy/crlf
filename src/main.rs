@@ -107,11 +107,11 @@ fn main() {
                     None => Color::Red.paint("X"),
                 };
                 println!(
-                    "{} {}: {}, {}",
+                    "{}, {}, {}, {}",
                     indicator,
+                    Color::Yellow.paint(format!("crlf: {:4}", stat.crlf())),
+                    Color::Green.paint(format!("lf: {:4}", stat.lf())),
                     f.display(),
-                    Color::Yellow.paint(format!("crlf: {}", stat.crlf())),
-                    Color::Green.paint(format!("lf: {}", stat.lf()))
                 );
             } else {
                 let indicator = match stat.is_pure() {
@@ -122,11 +122,11 @@ fn main() {
                     None => 'X',
                 };
                 println!(
-                    "{} {}: crlf: {}, lf: {}",
+                    "{}, crlf: {:4}, lf: {:4}, {}",
                     indicator,
-                    f.display(),
                     stat.crlf(),
-                    stat.lf()
+                    stat.lf(),
+                    f.display(),
                 );
             }
         });
