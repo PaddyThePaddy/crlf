@@ -1,4 +1,5 @@
 use ansi_term::Color;
+use atty::Stream;
 use clap::{Arg, ArgAction, ArgMatches};
 use crlf::*;
 use std::{fs::File, path::PathBuf};
@@ -97,20 +98,37 @@ fn main() {
     if action == Action::Measure {
         files.iter().for_each(|f| {
             let stat = CrlfStat::measure_file(File::open(f).unwrap());
-            let indicator = match stat.is_pure() {
-                Some(le) => match le {
-                    LineEnding::CRLF => Color::Yellow.paint("C"),
-                    LineEnding::LF => Color::Green.paint("L"),
-                },
-                None => Color::Red.paint("X"),
-            };
-            println!(
-                "{} {}: {}, {}",
-                indicator,
-                f.display(),
-                Color::Yellow.paint(format!("crlf: {}", stat.crlf())),
-                Color::Green.paint(format!("lf: {}", stat.lf()))
-            );
+            if atty::is(Stream::Stdout) {
+                let indicator = match stat.is_pure() {
+                    Some(le) => match le {
+                        LineEnding::CRLF => Color::Yellow.paint("C"),
+                        LineEnding::LF => Color::Green.paint("L"),
+                    },
+                    None => Color::Red.paint("X"),
+                };
+                println!(
+                    "{} {}: {}, {}",
+                    indicator,
+                    f.display(),
+                    Color::Yellow.paint(format!("crlf: {}", stat.crlf())),
+                    Color::Green.paint(format!("lf: {}", stat.lf()))
+                );
+            } else {
+                let indicator = match stat.is_pure() {
+                    Some(le) => match le {
+                        LineEnding::CRLF => 'C',
+                        LineEnding::LF => 'L',
+                    },
+                    None => 'X',
+                };
+                println!(
+                    "{} {}: crlf: {}, lf: {}",
+                    indicator,
+                    f.display(),
+                    stat.crlf(),
+                    stat.lf()
+                );
+            }
         });
     } else {
         let target = match action {
@@ -124,14 +142,18 @@ fn main() {
             convert_to(File::open(f).unwrap(), &mut dest, target);
             std::fs::write(f, dest).unwrap();
 
-            println!(
-                "set {} to {}",
-                f.display(),
-                match target {
-                    LineEnding::CRLF => Color::Yellow.paint(format!("{}", target)),
-                    LineEnding::LF => Color::Green.paint(format!("{}", target)),
-                }
-            );
+            if atty::is(Stream::Stdout) {
+                println!(
+                    "set {} to {}",
+                    f.display(),
+                    match target {
+                        LineEnding::CRLF => Color::Yellow.paint(format!("{}", target)),
+                        LineEnding::LF => Color::Green.paint(format!("{}", target)),
+                    }
+                );
+            } else {
+                println!("set {} to {}", f.display(), target);
+            }
         });
     }
 }
