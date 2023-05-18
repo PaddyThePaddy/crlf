@@ -5,13 +5,13 @@ use crlf::*;
 use std::{fs::File, path::PathBuf};
 
 fn build_args() -> ArgMatches {
-    clap::Command::new("utf8-test")
+    clap::Command::new("crlf")
     .author("paddydeng@ami.com")
     .version(git_version::git_version!())
     .about("Check if files has illegal character for given encoding")
     .arg(
       Arg::new("action")
-      .action(ArgAction::Set).required(true)
+      .action(ArgAction::Set)
     )
     .arg(
       Arg::new("pattern")
@@ -50,7 +50,11 @@ enum Action {
 
 fn main() {
     let args = build_args();
-    let action = match args.get_one::<String>("action").unwrap().as_str() {
+    let action = match args
+        .get_one::<String>("action")
+        .unwrap_or_else(|| error_exit(format!("must provide an action: measure, to-crlf, to-lf")))
+        .as_str()
+    {
         "measure" => Action::Measure,
         "to-crlf" => Action::SetCrlf,
         "to-lf" => Action::SetLf,
