@@ -8,7 +8,7 @@ fn build_args() -> ArgMatches {
     clap::Command::new("crlf")
     .author("paddydeng@ami.com")
     .version(git_version::git_version!())
-    .about("Check if files has illegal character for given encoding")
+    .about("Check and change line ending for text files")
     .arg(
       Arg::new("action")
       .action(ArgAction::Set)
@@ -24,7 +24,7 @@ fn build_args() -> ArgMatches {
       .short('g')
       .long("git-file")
       .action(ArgAction::SetTrue)
-      .help("Use git ls-files to get file list")
+      .help("Use git grep to get text file list")
     )
     .arg(
       Arg::new("verbose")
@@ -67,7 +67,12 @@ fn main() {
     let files: Vec<PathBuf> = if args.get_flag("git-file") {
         let git_result = std::process::Command::new("git")
             .args([
-                "ls-files",
+                "grep",
+                "-I",
+                "--name-only",
+                "--untracked",
+                "-e",
+                ".",
                 "--",
                 if pattern == "**/*" { "*" } else { pattern },
             ])
