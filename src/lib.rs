@@ -1,14 +1,10 @@
-#[macro_use]
-extern crate lazy_static;
-
-use std::io::{BufRead, BufReader, Read, Write};
+use std::io::{BufRead, Write};
 
 const CR: u8 = 0x0D;
 const LF: u8 = 0x0A;
-lazy_static! {
-    static ref CRLF_BUF: Vec<u8> = vec![CR, LF];
-    static ref LF_BUF: Vec<u8> = vec![LF];
-}
+
+const CRLF_BUF: [u8; 2] = [CR, LF];
+const LF_BUF: [u8; 1] = [LF];
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LineEnding {
@@ -25,7 +21,7 @@ impl std::fmt::Display for LineEnding {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct CrlfStat {
     lf: usize,
     crlf: usize,
@@ -50,23 +46,13 @@ impl CrlfStat {
         self.crlf
     }
 
-    pub fn new() -> CrlfStat {
-        CrlfStat { lf: 0, crlf: 0 }
-    }
-
-    pub fn measure_file<R: Read>(source: R) -> CrlfStat {
-        let mut reader = BufReader::new(source);
+    pub fn measure_file<R: BufRead>(mut source: R) -> std::io::Result<CrlfStat> {
         let mut buf = vec![];
-        let mut stat = CrlfStat::new();
+        let mut stat = CrlfStat::default();
         loop {
-            match reader.read_until(LF, &mut buf) {
-                Ok(n) => {
-                    if n == 0 {
-                        break;
-                    }
-                }
-                Err(_) => break,
-            };
+            if source.read_until(LF, &mut buf)? == 0 {
+                break;
+            }
             if buf.len() >= 2 && buf[buf.len() - 2] == CR {
                 stat.crlf += 1;
             } else {
@@ -74,7 +60,7 @@ impl CrlfStat {
             }
             buf.clear();
         }
-        return stat;
+        return Ok(stat);
     }
 }
 
@@ -86,18 +72,10 @@ pub fn convert_to<R: BufRead, W: Write>(
     let mut buf = vec![];
 
     loop {
-        match source.read_until(LF, &mut buf) {
-            Ok(n) => {
-                if n == 0 {
-                    break;
-                }
-            }
-            Err(_) => break,
+        if source.read_until(LF, &mut buf)? == 0 {
+            break;
         }
-        let has_line_ending = match buf.last() {
-            None => false,
-            Some(c) => *c == LF,
-        };
+        let has_line_ending = buf.last().is_some_and(|c| *c == LF);
         if has_line_ending {
             buf.pop();
             if buf.last() == Some(&CR) {
@@ -123,22 +101,22 @@ pub fn convert_to<R: BufRead, W: Write>(
 
 #[cfg(test)]
 mod test {
-    use std::io::Cursor;
+    use std::io::{BufReader, Cursor};
 
     use super::*;
 
     #[test]
     fn test_stats() {
         let lf_file = std::fs::File::open("test/Cargo.toml.lf").unwrap();
-        let stat = CrlfStat::measure_file(lf_file);
+        let stat = CrlfStat::measure_file(BufReader::new(lf_file)).unwrap();
         assert_eq!(stat.is_pure(), Some(LineEnding::LF));
 
         let crlf_file = std::fs::File::open("test/Cargo.toml.crlf").unwrap();
-        let stat = CrlfStat::measure_file(crlf_file);
+        let stat = CrlfStat::measure_file(BufReader::new(crlf_file)).unwrap();
         assert_eq!(stat.is_pure(), Some(LineEnding::CRLF));
 
         let mixed_file = std::fs::File::open("test/Cargo.toml.mixed").unwrap();
-        let stat = CrlfStat::measure_file(mixed_file);
+        let stat = CrlfStat::measure_file(BufReader::new(mixed_file)).unwrap();
         assert_eq!(stat.is_pure(), None);
         assert_eq!(stat.crlf(), 8);
         assert_eq!(stat.lf(), 6);

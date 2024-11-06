@@ -81,9 +81,10 @@ fn main() -> anyhow::Result<()> {
         files
             .iter()
             .map(|f| {
-                let stat = CrlfStat::measure_file(
+                let stat = CrlfStat::measure_file(BufReader::new(
                     File::open(f).context(format!("Read file {} failed", f.display()))?,
-                );
+                ))
+                .context(format!("Measure file {} failed", f.display()))?;
                 if atty::is(Stream::Stdout) {
                     let indicator = match stat.is_pure() {
                         Some(le) => match le {
@@ -122,7 +123,7 @@ fn main() -> anyhow::Result<()> {
         let target = match args.action {
             Action::SetCrlf => LineEnding::CRLF,
             Action::SetLf => LineEnding::LF,
-            _ => panic!("wtf"),
+            _ => unreachable!("wtf"),
         };
 
         files
