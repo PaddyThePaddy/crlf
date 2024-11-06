@@ -15,7 +15,7 @@ struct Cli {
     action: Action,
     /// file name pattern (using glob)
     ///
-    /// if --git-file(-g) is given, this pattern will be passed to git ls-files
+    /// if --git-file(-g) is given, this pattern will be passed to git grep
     #[arg(default_value = "**/*")]
     pattern: String,
 

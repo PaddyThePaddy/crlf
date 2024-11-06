@@ -1,7 +1,7 @@
 use std::io::{BufRead, Write};
 
-const CR: u8 = 0x0D;
-const LF: u8 = 0x0A;
+const CR: u8 = '\r' as u8;
+const LF: u8 = '\n' as u8;
 
 const CRLF_BUF: [u8; 2] = [CR, LF];
 const LF_BUF: [u8; 1] = [LF];
