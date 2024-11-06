@@ -1,39 +1,31 @@
 use ansi_term::Color;
 use atty::Stream;
-use clap::{Arg, ArgAction, ArgMatches};
+use clap::Parser as _;
 use crlf::*;
 use std::{fs::File, path::PathBuf};
 
-fn build_args() -> ArgMatches {
-    clap::Command::new("crlf")
-    .author("paddydeng@ami.com")
-    .version(git_version::git_version!())
-    .about("Check and change line ending for text files")
-    .arg(
-      Arg::new("action")
-      .action(ArgAction::Set)
-    )
-    .arg(
-      Arg::new("pattern")
-      .default_value("**/*")
-      .action(ArgAction::Set)
-      .help("file name pattern (using glob)\nif --git-file(-g) is given, this pattern will be passed to git ls-files")
-    )
-    .arg(
-      Arg::new("git-file")
-      .short('g')
-      .long("git-file")
-      .action(ArgAction::SetTrue)
-      .help("Use git grep to get text file list")
-    )
-    .arg(
-      Arg::new("verbose")
-      .short('v')
-      .long("verbose")
-      .action(ArgAction::SetTrue)
-      .help("Show detailed output")
-    )
-    .get_matches()
+
+#[derive(clap::Parser)]
+#[command(
+    author = "paddydeng@ami.com",
+    about = "Check and change line ending for text files",
+    version = git_version::git_version!()
+)]
+struct Cli{
+    action: Action,
+    /// file name pattern (using glob)
+    /// 
+    /// if --git-file(-g) is given, this pattern will be passed to git ls-files
+    #[arg(default_value = "**/*")]
+    pattern: String,
+
+    /// Use git grep to get text file list
+    #[arg(long, short)]
+    git_file: bool,
+
+    /// Show detailed output
+    #[arg(long, short)]
+    verbose: bool,
 }
 
 fn error_exit<T>(msg: String) -> T {
@@ -41,7 +33,7 @@ fn error_exit<T>(msg: String) -> T {
     std::process::exit(1);
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, clap::ValueEnum, Clone)]
 enum Action {
     Measure,
     SetCrlf,
@@ -49,22 +41,9 @@ enum Action {
 }
 
 fn main() {
-    let args = build_args();
-    let action = match args
-        .get_one::<String>("action")
-        .unwrap_or_else(|| error_exit(format!("must provide an action: measure, to-crlf, to-lf")))
-        .as_str()
-    {
-        "measure" => Action::Measure,
-        "to-crlf" => Action::SetCrlf,
-        "to-lf" => Action::SetLf,
-        _ => error_exit(format!("must provide an action: measure, to-crlf, to-lf")),
-    };
-    let pattern = args
-        .get_one::<String>("pattern")
-        .expect("No pattern provided");
-
-    let files: Vec<PathBuf> = if args.get_flag("git-file") {
+    let args = Cli::parse();
+    
+    let files: Vec<PathBuf> = if args.git_file {
         let git_result = std::process::Command::new("git")
             .args([
                 "grep",
@@ -74,7 +53,7 @@ fn main() {
                 "-e",
                 ".",
                 "--",
-                if pattern == "**/*" { "*" } else { pattern },
+                if args.pattern == "**/*" { "*" } else { args.pattern.as_str() },
             ])
             .output()
             .expect("Run git command failed");
@@ -94,7 +73,7 @@ fn main() {
             .map(|l| PathBuf::from(l))
             .collect()
     } else {
-        glob::glob(pattern)
+        glob::glob(args.pattern.as_str())
             .expect("Failed to read glob pattern")
             .map(|e| match e {
                 Ok(p) => p,
@@ -104,7 +83,7 @@ fn main() {
             .collect()
     };
 
-    if action == Action::Measure {
+    if args.action == Action::Measure {
         files.iter().for_each(|f| {
             let stat = CrlfStat::measure_file(File::open(f).unwrap());
             if atty::is(Stream::Stdout) {
@@ -140,7 +119,7 @@ fn main() {
             }
         });
     } else {
-        let target = match action {
+        let target = match args.action {
             Action::SetCrlf => LineEnding::CRLF,
             Action::SetLf => LineEnding::LF,
             _ => panic!("wtf"),
