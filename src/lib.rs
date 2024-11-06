@@ -10,7 +10,7 @@ lazy_static! {
     static ref LF_BUF: Vec<u8> = vec![LF];
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LineEnding {
     CRLF,
     LF,
@@ -114,5 +114,85 @@ pub fn convert_to<R: Read, W: Write>(source: R, dest: W, ending: LineEnding) {
                 }
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use std::io::Cursor;
+
+    use super::*;
+
+    #[test]
+    fn test_stats() {
+        let lf_file = std::fs::File::open("test/Cargo.toml.lf").unwrap();
+        let stat = CrlfStat::measure_file(lf_file);
+        assert_eq!(stat.is_pure(), Some(LineEnding::LF));
+
+        let crlf_file = std::fs::File::open("test/Cargo.toml.crlf").unwrap();
+        let stat = CrlfStat::measure_file(crlf_file);
+        assert_eq!(stat.is_pure(), Some(LineEnding::CRLF));
+
+        let mixed_file = std::fs::File::open("test/Cargo.toml.mixed").unwrap();
+        let stat = CrlfStat::measure_file(mixed_file);
+        assert_eq!(stat.is_pure(), None);
+        assert_eq!(stat.crlf(), 8);
+        assert_eq!(stat.lf(), 6);
+    }
+
+    #[test]
+    fn test_convert() {
+        let lf_file = std::fs::read("test/Cargo.toml.lf").unwrap();
+        let crlf_file = std::fs::read("test/Cargo.toml.crlf").unwrap();
+        let mixed_file = std::fs::read("test/Cargo.toml.mixed").unwrap();
+        let mut dst_buf = vec![];
+
+        convert_to(
+            Cursor::new(&lf_file),
+            Cursor::new(&mut dst_buf),
+            LineEnding::LF,
+        );
+        assert_eq!(dst_buf, lf_file);
+        dst_buf.clear();
+
+        convert_to(
+            Cursor::new(&lf_file),
+            Cursor::new(&mut dst_buf),
+            LineEnding::CRLF,
+        );
+        assert_eq!(dst_buf, crlf_file);
+        dst_buf.clear();
+
+        convert_to(
+            Cursor::new(&crlf_file),
+            Cursor::new(&mut dst_buf),
+            LineEnding::LF,
+        );
+        assert_eq!(dst_buf, lf_file);
+        dst_buf.clear();
+
+        convert_to(
+            Cursor::new(&crlf_file),
+            Cursor::new(&mut dst_buf),
+            LineEnding::CRLF,
+        );
+        assert_eq!(dst_buf, crlf_file);
+        dst_buf.clear();
+
+        convert_to(
+            Cursor::new(&mixed_file),
+            Cursor::new(&mut dst_buf),
+            LineEnding::LF,
+        );
+        assert_eq!(dst_buf, lf_file);
+        dst_buf.clear();
+
+        convert_to(
+            Cursor::new(&mixed_file),
+            Cursor::new(&mut dst_buf),
+            LineEnding::CRLF,
+        );
+        assert_eq!(dst_buf, crlf_file);
+        dst_buf.clear();
     }
 }
