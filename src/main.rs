@@ -3,7 +3,7 @@ use anyhow::{anyhow, Context};
 use atty::Stream;
 use clap::Parser as _;
 use crlf::*;
-use std::{fs::File, path::PathBuf};
+use std::{fs::File, io::BufReader, path::PathBuf};
 
 #[derive(clap::Parser)]
 #[command(
@@ -130,7 +130,9 @@ fn main() -> anyhow::Result<()> {
             .map(|f| {
                 let mut dest = vec![];
                 convert_to(
-                    File::open(f).context(format!("Read file {} failed", f.display()))?,
+                    BufReader::new(
+                        File::open(f).context(format!("Read file {} failed", f.display()))?,
+                    ),
                     &mut dest,
                     target,
                 )

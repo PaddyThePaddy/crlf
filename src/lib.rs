@@ -1,7 +1,7 @@
 #[macro_use]
 extern crate lazy_static;
 
-use std::io::{BufRead, BufReader, BufWriter, Read, Write};
+use std::io::{BufRead, BufReader, Read, Write};
 
 const CR: u8 = 0x0D;
 const LF: u8 = 0x0A;
@@ -78,13 +78,11 @@ impl CrlfStat {
     }
 }
 
-pub fn convert_to<R: Read, W: Write>(
-    source: R,
-    dest: W,
+pub fn convert_to<R: BufRead, W: Write>(
+    mut source: R,
+    mut dest: W,
     ending: LineEnding,
 ) -> std::io::Result<()> {
-    let mut source = BufReader::new(source);
-    let mut dest = BufWriter::new(dest);
     let mut buf = vec![];
 
     loop {
