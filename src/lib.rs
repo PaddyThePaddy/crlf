@@ -78,7 +78,11 @@ impl CrlfStat {
     }
 }
 
-pub fn convert_to<R: Read, W: Write>(source: R, dest: W, ending: LineEnding) {
+pub fn convert_to<R: Read, W: Write>(
+    source: R,
+    dest: W,
+    ending: LineEnding,
+) -> std::io::Result<()> {
     let mut source = BufReader::new(source);
     let mut dest = BufWriter::new(dest);
     let mut buf = vec![];
@@ -102,19 +106,21 @@ pub fn convert_to<R: Read, W: Write>(source: R, dest: W, ending: LineEnding) {
                 buf.pop();
             }
         }
-        dest.write(&buf).unwrap();
+        dest.write(&buf)?;
         buf.clear();
         if has_line_ending {
             match ending {
                 LineEnding::CRLF => {
-                    dest.write(&CRLF_BUF).unwrap();
+                    dest.write(&CRLF_BUF)?;
                 }
                 LineEnding::LF => {
-                    dest.write(&LF_BUF).unwrap();
+                    dest.write(&LF_BUF)?;
                 }
             }
         }
     }
+
+    Ok(())
 }
 
 #[cfg(test)]
@@ -151,7 +157,8 @@ mod test {
             Cursor::new(&lf_file),
             Cursor::new(&mut dst_buf),
             LineEnding::LF,
-        );
+        )
+        .unwrap();
         assert_eq!(dst_buf, lf_file);
         dst_buf.clear();
 
@@ -159,7 +166,8 @@ mod test {
             Cursor::new(&lf_file),
             Cursor::new(&mut dst_buf),
             LineEnding::CRLF,
-        );
+        )
+        .unwrap();
         assert_eq!(dst_buf, crlf_file);
         dst_buf.clear();
 
@@ -167,7 +175,8 @@ mod test {
             Cursor::new(&crlf_file),
             Cursor::new(&mut dst_buf),
             LineEnding::LF,
-        );
+        )
+        .unwrap();
         assert_eq!(dst_buf, lf_file);
         dst_buf.clear();
 
@@ -175,7 +184,8 @@ mod test {
             Cursor::new(&crlf_file),
             Cursor::new(&mut dst_buf),
             LineEnding::CRLF,
-        );
+        )
+        .unwrap();
         assert_eq!(dst_buf, crlf_file);
         dst_buf.clear();
 
@@ -183,7 +193,8 @@ mod test {
             Cursor::new(&mixed_file),
             Cursor::new(&mut dst_buf),
             LineEnding::LF,
-        );
+        )
+        .unwrap();
         assert_eq!(dst_buf, lf_file);
         dst_buf.clear();
 
@@ -191,7 +202,8 @@ mod test {
             Cursor::new(&mixed_file),
             Cursor::new(&mut dst_buf),
             LineEnding::CRLF,
-        );
+        )
+        .unwrap();
         assert_eq!(dst_buf, crlf_file);
         dst_buf.clear();
     }
