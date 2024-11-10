@@ -35,6 +35,10 @@ enum Action {
     SetLf,
 }
 
+const CRLF_COLOR: ansi_term::Colour = Color::Yellow;
+const LF_COLOR: ansi_term::Colour = Color::Green;
+const MIXED_COLOR: ansi_term::Colour = Color::Red;
+
 fn main() -> anyhow::Result<()> {
     let args = Cli::parse();
 
@@ -87,25 +91,21 @@ fn main() -> anyhow::Result<()> {
                 .context(format!("Measure file {} failed", f.display()))?;
                 if atty::is(Stream::Stdout) {
                     let indicator = match stat.is_pure() {
-                        Some(le) => match le {
-                            LineEnding::CRLF => Color::Yellow.paint("C"),
-                            LineEnding::LF => Color::Green.paint("L"),
-                        },
-                        None => Color::Red.paint("X"),
+                        Some(LineEnding::CRLF) => CRLF_COLOR.paint("C"),
+                        Some(LineEnding::LF) => LF_COLOR.paint("L"),
+                        None => MIXED_COLOR.paint("X"),
                     };
                     println!(
                         "{}, {}, {}, {}",
                         indicator,
-                        Color::Yellow.paint(format!("crlf: {:4}", stat.crlf())),
-                        Color::Green.paint(format!("lf: {:4}", stat.lf())),
+                        CRLF_COLOR.paint(format!("crlf: {:4}", stat.crlf())),
+                        LF_COLOR.paint(format!("lf: {:4}", stat.lf())),
                         f.display(),
                     );
                 } else {
                     let indicator = match stat.is_pure() {
-                        Some(le) => match le {
-                            LineEnding::CRLF => 'C',
-                            LineEnding::LF => 'L',
-                        },
+                        Some(LineEnding::CRLF) => 'C',
+                        Some(LineEnding::LF) => 'L',
                         None => 'X',
                     };
                     println!(
@@ -145,8 +145,8 @@ fn main() -> anyhow::Result<()> {
                         "set {} to {}",
                         f.display(),
                         match target {
-                            LineEnding::CRLF => Color::Yellow.paint(format!("{}", target)),
-                            LineEnding::LF => Color::Green.paint(format!("{}", target)),
+                            LineEnding::CRLF => CRLF_COLOR.paint(format!("{}", target)),
+                            LineEnding::LF => LF_COLOR.paint(format!("{}", target)),
                         }
                     );
                 } else {

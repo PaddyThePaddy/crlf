@@ -53,7 +53,7 @@ impl CrlfStat {
             if source.read_until(LF, &mut buf)? == 0 {
                 break;
             }
-            if buf.len() >= 2 && buf[buf.len() - 2] == CR {
+            if buf.ends_with(&CRLF_BUF) {
                 stat.crlf += 1;
             } else {
                 stat.lf += 1;
@@ -95,6 +95,7 @@ pub fn convert_to<R: BufRead, W: Write>(
             }
         }
     }
+    dest.flush()?;
 
     Ok(())
 }
