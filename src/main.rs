@@ -70,8 +70,8 @@ fn main() -> anyhow::Result<()> {
         String::from_utf8_lossy(&git_result.stdout)
             .split('\n')
             .map(|s| s.trim())
-            .filter(|s| s.len() > 0)
-            .map(|l| PathBuf::from(l))
+            .filter(|s| !s.is_empty())
+            .map(PathBuf::from)
             .collect()
     } else {
         glob::glob(args.pattern.as_str())
@@ -82,43 +82,40 @@ fn main() -> anyhow::Result<()> {
     };
 
     if args.action == Action::Measure {
-        files
-            .iter()
-            .map(|f| {
-                let stat = CrlfStat::measure_file(BufReader::new(
-                    File::open(f).context(format!("Read file {} failed", f.display()))?,
-                ))
-                .context(format!("Measure file {} failed", f.display()))?;
-                if atty::is(Stream::Stdout) {
-                    let indicator = match stat.is_pure() {
-                        Some(LineEnding::CRLF) => CRLF_COLOR.paint("C"),
-                        Some(LineEnding::LF) => LF_COLOR.paint("L"),
-                        None => MIXED_COLOR.paint("X"),
-                    };
-                    println!(
-                        "{}, {}, {}, {}",
-                        indicator,
-                        CRLF_COLOR.paint(format!("crlf: {:4}", stat.crlf())),
-                        LF_COLOR.paint(format!("lf: {:4}", stat.lf())),
-                        f.display(),
-                    );
-                } else {
-                    let indicator = match stat.is_pure() {
-                        Some(LineEnding::CRLF) => 'C',
-                        Some(LineEnding::LF) => 'L',
-                        None => 'X',
-                    };
-                    println!(
-                        "{}, crlf: {:4}, lf: {:4}, {}",
-                        indicator,
-                        stat.crlf(),
-                        stat.lf(),
-                        f.display(),
-                    );
-                }
-                Ok::<(), anyhow::Error>(())
-            })
-            .collect::<Result<(), anyhow::Error>>()?;
+        files.iter().try_for_each(|f| {
+            let stat = CrlfStat::measure_file(BufReader::new(
+                File::open(f).context(format!("Read file {} failed", f.display()))?,
+            ))
+            .context(format!("Measure file {} failed", f.display()))?;
+            if atty::is(Stream::Stdout) {
+                let indicator = match stat.is_pure() {
+                    Some(LineEnding::CRLF) => CRLF_COLOR.paint("C"),
+                    Some(LineEnding::LF) => LF_COLOR.paint("L"),
+                    None => MIXED_COLOR.paint("X"),
+                };
+                println!(
+                    "{}, {}, {}, {}",
+                    indicator,
+                    CRLF_COLOR.paint(format!("crlf: {:4}", stat.crlf())),
+                    LF_COLOR.paint(format!("lf: {:4}", stat.lf())),
+                    f.display(),
+                );
+            } else {
+                let indicator = match stat.is_pure() {
+                    Some(LineEnding::CRLF) => 'C',
+                    Some(LineEnding::LF) => 'L',
+                    None => 'X',
+                };
+                println!(
+                    "{}, crlf: {:4}, lf: {:4}, {}",
+                    indicator,
+                    stat.crlf(),
+                    stat.lf(),
+                    f.display(),
+                );
+            }
+            Ok::<(), anyhow::Error>(())
+        })?;
     } else {
         let target = match args.action {
             Action::SetCrlf => LineEnding::CRLF,
@@ -126,36 +123,31 @@ fn main() -> anyhow::Result<()> {
             _ => unreachable!("wtf"),
         };
 
-        files
-            .iter()
-            .map(|f| {
-                let mut dest = vec![];
-                convert_to(
-                    BufReader::new(
-                        File::open(f).context(format!("Read file {} failed", f.display()))?,
-                    ),
-                    &mut dest,
-                    target,
-                )
-                .context(format!("Convert file {} failed", f.display()))?;
-                std::fs::write(f, dest).context(format!("Write file {} failed", f.display()))?;
+        files.iter().try_for_each(|f| {
+            let mut dest = vec![];
+            convert_to(
+                BufReader::new(File::open(f).context(format!("Read file {} failed", f.display()))?),
+                &mut dest,
+                target,
+            )
+            .context(format!("Convert file {} failed", f.display()))?;
+            std::fs::write(f, dest).context(format!("Write file {} failed", f.display()))?;
 
-                if atty::is(Stream::Stdout) {
-                    println!(
-                        "set {} to {}",
-                        f.display(),
-                        match target {
-                            LineEnding::CRLF => CRLF_COLOR.paint(format!("{}", target)),
-                            LineEnding::LF => LF_COLOR.paint(format!("{}", target)),
-                        }
-                    );
-                } else {
-                    println!("set {} to {}", f.display(), target);
-                }
+            if atty::is(Stream::Stdout) {
+                println!(
+                    "set {} to {}",
+                    f.display(),
+                    match target {
+                        LineEnding::CRLF => CRLF_COLOR.paint(format!("{}", target)),
+                        LineEnding::LF => LF_COLOR.paint(format!("{}", target)),
+                    }
+                );
+            } else {
+                println!("set {} to {}", f.display(), target);
+            }
 
-                Ok::<(), anyhow::Error>(())
-            })
-            .collect::<Result<(), anyhow::Error>>()?;
+            Ok::<(), anyhow::Error>(())
+        })?;
     }
 
     Ok(())

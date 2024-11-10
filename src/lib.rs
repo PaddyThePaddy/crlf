@@ -1,7 +1,7 @@
 use std::io::{BufRead, Write};
 
-const CR: u8 = '\r' as u8;
-const LF: u8 = '\n' as u8;
+const CR: u8 = b'\r';
+const LF: u8 = b'\n';
 
 const CRLF_BUF: [u8; 2] = [CR, LF];
 const LF_BUF: [u8; 1] = [LF];
@@ -35,7 +35,7 @@ impl CrlfStat {
         if self.lf != 0 && self.crlf == 0 {
             return Some(LineEnding::LF);
         }
-        return None;
+        None
     }
 
     pub fn lf(&self) -> usize {
@@ -60,7 +60,7 @@ impl CrlfStat {
             }
             buf.clear();
         }
-        return Ok(stat);
+        Ok(stat)
     }
 }
 
@@ -82,15 +82,15 @@ pub fn convert_to<R: BufRead, W: Write>(
                 buf.pop();
             }
         }
-        dest.write(&buf)?;
+        dest.write_all(&buf)?;
         buf.clear();
         if has_line_ending {
             match ending {
                 LineEnding::CRLF => {
-                    dest.write(&CRLF_BUF)?;
+                    dest.write_all(&CRLF_BUF)?;
                 }
                 LineEnding::LF => {
-                    dest.write(&LF_BUF)?;
+                    dest.write_all(&LF_BUF)?;
                 }
             }
         }
